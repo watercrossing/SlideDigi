@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+"RPi.GPIO" = {version = "*", markers="platform_machine=='armv71' and sys_platform=='linux'"}
+gphoto2 = {version = "*", markers="platform_machine=='armv71' and sys_platform=='linux'"}
+prompt-toolkit = "*"
+
+[dev-packages]
+pylint = "*"
+rope = "*"
+
+[requires]
+python_version = "3.8"
