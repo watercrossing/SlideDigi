@@ -22,6 +22,8 @@ except ImportError:
 
 RELAIS_1_GPIO = 17
 
+TARGETDIR = '/mnt/fotos-ablage/'
+
 async def setup():
     camera = gp.Camera()
     while True:
@@ -35,7 +37,7 @@ async def setup():
                 continue
             raise
         break
-    GPIO.setmode(GPIO.BOARD)
+    GPIO.setmode(GPIO.BCM)
     GPIO.setup(RELAIS_1_GPIO, GPIO.OUT)
 
     return camera
@@ -43,18 +45,20 @@ async def setup():
 
 async def moveForward():
     logging.info("Moving forward")
-    GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
-    await asyncio.sleep(0.1)
     GPIO.output(RELAIS_1_GPIO, GPIO.HIGH)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.1)
+    GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
+    await asyncio.sleep(1.5)
+    logging.info("Forward move complete")
 
 
 async def moveBackward():
     logging.info("Moving backward")
-    GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
-    await asyncio.sleep(0.5)
     GPIO.output(RELAIS_1_GPIO, GPIO.HIGH)
     await asyncio.sleep(0.5)
+    GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
+    await asyncio.sleep(1.5)
+    logging.info("Backward move complete")
 
 
 def takePicture(camera):
@@ -64,13 +68,14 @@ def takePicture(camera):
 
 def getPictures(camera, file_path):
     logging.debug('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-    target = os.path.join('/tmp', file_path.name)
+    target = os.path.join(TARGETDIR, file_path.name)
     logging.debug('Copying image to %s' %target)
     camera_file = camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
     camera_file.save(target)
+    logging.debug('Copying done')
 
-async def main():
-    logging.info("Main started")
+async def takeOne():
+    logging.info("TakeOne started")
     loop = asyncio.get_running_loop()
     camera = await setup()
     with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -83,7 +88,5 @@ async def main():
     #await asyncio.gather(getPictures(camera, filepath), moveForward())
 
 
-logging.warning("Logging from the module")
-
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(takeOne())
