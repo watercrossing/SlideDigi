@@ -13,5 +13,5 @@ rootLogger.addHandler(fileHandler)
 
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
-#consoleHandler.setLevel(logging.WARNING)
+consoleHandler.setLevel(logging.WARNING)
 rootLogger.addHandler(consoleHandler)

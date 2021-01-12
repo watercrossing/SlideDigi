@@ -49,12 +49,16 @@ def _create_app(dialog: AnyContainer, style: Optional[BaseStyle]) -> Application
     )
 
 
-async def mainDialog(batchSize):
+async def mainDialog(camera, batchSize):
 
     batchSize = [batchSize]
 
     def buttonhdl(button: int)-> None:
         get_app().exit(result=button)
+
+    def scanOne() -> None:
+        fp = dl.takePicture(camera)
+        dl.getPictures(camera, fp)
 
     def moveForward() -> None:
         asyncio.run_coroutine_threadsafe(dl.moveForward(), asyncio.get_event_loop())
@@ -62,17 +66,15 @@ async def mainDialog(batchSize):
     def moveBackward() -> None:
         asyncio.run_coroutine_threadsafe(dl.moveBackward(), asyncio.get_event_loop())
     
-    def startScanning(bs):
-        if bs == 0:
-            bs = batchSize[0]
-        get_app().exit(bs)
+    def startScanning():
+        get_app().exit(batchSize[0])
 
     title = "Slide Digitalisation"
 
     width = len(title) + 4
 
-    btnBatch = Button(text="Scan batch", handler=partial(startScanning, 0), width=width)
-    btnOne = Button(text="Scan one", handler=partial(startScanning, 1), width=width)
+    btnBatch = Button(text="Scan batch", handler=startScanning, width=width)
+    btnOne = Button(text="Scan one (w/o) moving", handler=scanOne, width=width)
     btnForward = Button(text="Forward", handler=moveForward, width=width)
     btnBackward = Button(text="Backward", handler=moveBackward, width=width)
     btnQuit = Button(text="Quit", handler=partial(buttonhdl, -1), width=width)
@@ -84,10 +86,11 @@ async def mainDialog(batchSize):
 
     def is_valid(text):
         try:
-            int(text)
+            batchSize[0] = int(text)
             return True
         except ValueError:
             return False
+
     validator = Validator.from_callable(is_valid, error_message='Numbers only')
     textfield = TextArea(
         text=str(batchSize[0]),
@@ -226,7 +229,7 @@ async def main():
     batchSize = origBatchSize = 32
     camera = await dl.setup()
     while True:
-        batchSize = await mainDialog(batchSize)
+        batchSize = await mainDialog(camera, batchSize)
         logging.debug("Main Dialog returned %d" %batchSize)
         if batchSize == -1:
             break

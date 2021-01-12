@@ -4,6 +4,7 @@ import logsetup
 
 import time, sys, logging, os, asyncio, concurrent
 from functools import partial
+from datetime import datetime
 
 try:
     from RPi import GPIO
@@ -31,9 +32,9 @@ async def setup():
             camera.init()
         except gp.GPhoto2Error as ex:
             if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                # no camera, try again in 2 seconds
+                # no camera, try again in 5 seconds
                 logging.warning("Please connect the camera")
-                asyncio.sleep(2)
+                asyncio.sleep(5)
                 continue
             raise
         break
@@ -68,7 +69,7 @@ def takePicture(camera):
 
 def getPictures(camera, file_path):
     logging.debug('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-    target = os.path.join(TARGETDIR, file_path.name)
+    target = os.path.join(TARGETDIR, datetime.now().strftime("%Y%m%d-%H%M%S.") + file_path.name.split(".")[-1])
     logging.debug('Copying image to %s' %target)
     camera_file = camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
     camera_file.save(target)
