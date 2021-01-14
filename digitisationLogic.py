@@ -49,16 +49,16 @@ async def moveForward():
     GPIO.output(RELAIS_1_GPIO, GPIO.HIGH)
     await asyncio.sleep(0.1)
     GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(1.8)
     logging.info("Forward move complete")
 
 
 async def moveBackward():
     logging.info("Moving backward")
     GPIO.output(RELAIS_1_GPIO, GPIO.HIGH)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(1)
     GPIO.output(RELAIS_1_GPIO, GPIO.LOW)
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(1.8)
     logging.info("Backward move complete")
 
 

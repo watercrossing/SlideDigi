@@ -211,22 +211,27 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
                 loop = asyncio.get_running_loop()
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     filepath = await loop.run_in_executor(pool, partial(dl.takePicture, camera))
+## should not moveForward if pause button pressed
                     gPFuture = loop.run_in_executor(pool, partial(dl.getPictures, camera, filepath))
                     #mfTask = asyncio.create_task(moveForward)
-                    await asyncio.gather(gPFuture, dl.moveForward())
+                    if pause[0]:
+                        await gPFuture
+                    else:
+                        await asyncio.gather(gPFuture, dl.moveForward())
                     logging.debug("File transfered, moving on!")
-                scanProgress += 1
-                pbc.item_completed()
                 # Stop when the cancel flag has been set.
                 if pause[0]:
                     return batches[0], scanProgress, pbc.time_elapsed
+                else:
+                    scanProgress += 1
+                    pbc.item_completed()
                 if cancel[0]:
                     return batches[0], -1, None
             pbc.done = True
     return batches[0], -1, pbc.time_elapsed
 
 async def main():
-    batchSize = origBatchSize = 32
+    batchSize = origBatchSize = 36
     camera = await dl.setup()
     while True:
         batchSize = await mainDialog(camera, batchSize)
