@@ -32,6 +32,8 @@ import datetime
 
 import digitisationLogic as dl
 
+logger = logging.getLogger("displayLogic")
+
 
 def _create_app(dialog: AnyContainer, style: Optional[BaseStyle], customBindings: Optional[KeyBindings] = None) -> Application[Any]:
     # Key bindings.
@@ -227,7 +229,7 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
             if scanProgress > 0:
                 pbc.progress_bar.invalidate()
             while scanProgress < batches[0]:
-                logging.debug("At scanProgress: %d" %scanProgress)
+                logger.debug("At scanProgress: %d" %scanProgress)
                 if batches[0] != previousBatch:
                     pbc.total = batches[0]
                     pbc.progress_bar.invalidate()
@@ -250,7 +252,7 @@ async def main():
     camera = await dl.setup()
     while True:
         batchSize = await mainDialog(camera, batchSize)
-        logging.debug("Main Dialog returned %d" %batchSize)
+        logger.debug("Main Dialog returned %d" %batchSize)
         if batchSize == -1:
             break
         scanProgress = 0

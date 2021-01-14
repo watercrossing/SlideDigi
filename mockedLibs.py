@@ -4,12 +4,13 @@ import logsetup
 
 import logging, time
 
+logger = logging.getLogger('mockedLibs')
 
 GPIO = Mock()
 gp = Mock()
 
 def file_get(self, *args):
-    logging.debug("Sleeping in mocked file_get")
+    logger.debug("Sleeping in mocked file_get")
     time.sleep(1.5)
     return Mock()
 
@@ -21,7 +22,7 @@ def capture(self, *args):
     return m
 
 def output(self, *args):
-    logging.debug("Setting GPIO output to: %s" %repr(args))
+    logger.debug("Setting GPIO output to: %s" %repr(args))
     time.sleep(0.05)
 
 GPIO.output = output
@@ -45,7 +46,7 @@ gp.Camera = lambda : mockCam
 #sys.modules['RPi'] = RPIMock
 #sys.modules['gphoto2'] = gphotoMock
 
-#logging.warning("Test file")
+#logger.warning("Test file")
 
 #import main
 #asyncio.run(main.main())
