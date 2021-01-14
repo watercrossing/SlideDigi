@@ -234,7 +234,6 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
                     previousBatch = batches[0]
                 # Do picture taking and transfer here
                 await dl.takeOneAndMove(camera, pause)
-                
                 scanProgress += 1
                 pbc.item_completed()
                 # Pause when the pause flag has been set.
