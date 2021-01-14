@@ -6,6 +6,8 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import ProgressBar, yes_no_dialog
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.styles import BaseStyle
+from prompt_toolkit.completion import Completer, CompleteEvent, Completion
+from prompt_toolkit.document import Document
 
 
 from prompt_toolkit.application import Application, create_app_session
@@ -24,16 +26,16 @@ from prompt_toolkit.validation import Validator
 
 import time, os, signal, sys, asyncio, logging, concurrent
 
-from typing import Any, Callable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Iterable
 from functools import partial
 import datetime
 
 import digitisationLogic as dl
 
 
-def _create_app(dialog: AnyContainer, style: Optional[BaseStyle]) -> Application[Any]:
+def _create_app(dialog: AnyContainer, style: Optional[BaseStyle], customBindings: Optional[KeyBindings] = None) -> Application[Any]:
     # Key bindings.
-    bindings = KeyBindings()
+    bindings = customBindings if customBindings else KeyBindings()
     bindings.add("tab")(focus_next)
     bindings.add("s-tab")(focus_previous)
     bindings.add("down")(focus_next)
@@ -53,31 +55,42 @@ async def mainDialog(camera, batchSize):
 
     batchSize = [batchSize]
 
-    def buttonhdl(button: int)-> None:
-        get_app().exit(result=button)
+    kb = KeyBindings()
 
-    def scanOne() -> None:
+    @kb.add('q')
+    def quithdl(event)-> None:
+        get_app().exit(-1)
+
+    @kb.add('o')
+    def scanOne(event) -> None:
+        get_app().layout.focus(btnOne)
         fp = dl.takePicture(camera)
         dl.getPictures(camera, fp)
-
-    def moveForward() -> None:
+    
+    @kb.add('f')
+    def moveForward(event) -> None:
+        get_app().layout.focus(btnForward)
         asyncio.run_coroutine_threadsafe(dl.moveForward(), asyncio.get_event_loop())
 
-    def moveBackward() -> None:
+    @kb.add('b')
+    def moveBackward(event) -> None:
+        get_app().layout.focus(btnBackward)
         asyncio.run_coroutine_threadsafe(dl.moveBackward(), asyncio.get_event_loop())
     
-    def startScanning():
+    @kb.add('s')
+    def scanBatch(event):
+        get_app().layout.focus(btnBatch)
         get_app().exit(batchSize[0])
 
     title = "Slide Digitalisation"
 
     width = len(title) + 4
 
-    btnBatch = Button(text="Scan batch", handler=startScanning, width=width)
-    btnOne = Button(text="Scan one (w/o) moving", handler=scanOne, width=width)
-    btnForward = Button(text="Forward", handler=moveForward, width=width)
-    btnBackward = Button(text="Backward", handler=moveBackward, width=width)
-    btnQuit = Button(text="Quit", handler=partial(buttonhdl, -1), width=width)
+    btnBatch = Button(text="[s]can batch", handler=partial(scanBatch, None), width=width, left_symbol="", right_symbol="")
+    btnOne = Button(text="Scan [o]ne (w/o) moving", handler=partial(scanOne, None), width=width, left_symbol="", right_symbol="")
+    btnForward = Button(text="[f]orward", handler=partial(moveForward, None), width=width, left_symbol="", right_symbol="")
+    btnBackward = Button(text="[b]ackward", handler=partial(moveBackward, None), width=width, left_symbol="", right_symbol="")
+    btnQuit = Button(text="[q]uit", handler=partial(quithdl, None), width=width, left_symbol="", right_symbol="")
 
     def accept(buf: Buffer) -> bool:
         get_app().layout.focus(btnBatch)
@@ -91,14 +104,21 @@ async def mainDialog(camera, batchSize):
         except ValueError:
             return False
 
+    def hdlTextFieldChange(buf: Buffer):
+        try:
+            batchSize[0] = int(buf.text)
+        except ValueError:
+            pass
+
     validator = Validator.from_callable(is_valid, error_message='Numbers only')
     textfield = TextArea(
         text=str(batchSize[0]),
         multiline=False,
         password=False,
         validator=validator,
-        accept_handler=accept,
+        accept_handler=accept
     )
+    textfield.buffer.on_text_changed.add_handler(hdlTextFieldChange)
 
     dialog = Dialog(
         title=title,
@@ -117,30 +137,38 @@ async def mainDialog(camera, batchSize):
         with_background=True
     )
     
-    return await _create_app(dialog, None).run_async()
-
-
+    return await _create_app(dialog, None, kb).run_async()
 
 async def pauseDialog():
     
-    def moveForward() -> None:
+    kb = KeyBindings()
+
+    @kb.add('f')
+    def moveForward(event) -> None:
+        get_app().layout.focus(btnForward)
         asyncio.run_coroutine_threadsafe(dl.moveForward(), asyncio.get_event_loop())
 
-    def moveBackward() -> None:
+    @kb.add('b')
+    def moveBackward(event) -> None:
+        get_app().layout.focus(btnBackward)
         asyncio.run_coroutine_threadsafe(dl.moveBackward(), asyncio.get_event_loop())
     
-    def toReturn(bs):
-        get_app().exit(bs)
+    @kb.add('c')
+    def continueScanning(event) -> None:
+        get_app().exit(0)
+
+    @kb.add('q')
+    def quitScanning(event) -> None:
+        get_app().exit(-1)
 
     title = "Paused"
 
     width = len(title) + 4
 
-    btnContinue = Button(text="Continue", handler=partial(toReturn, 0), width=width)
-    btnForward = Button(text="Forward", handler=moveForward, width=width)
-    btnBackward = Button(text="Backward", handler=moveBackward, width=width)
-    btnQuit = Button(text="Quit", handler=partial(toReturn, -1), width=width)
-
+    btnContinue = Button(text="[c]ontinue", handler=partial(continueScanning, None), width=width, left_symbol="", right_symbol="")
+    btnForward = Button(text="[f]orward", handler=partial(moveForward, None), width=width, left_symbol="", right_symbol="")
+    btnBackward = Button(text="[b]ackward", handler=partial(moveBackward, None), width=width, left_symbol="", right_symbol="")
+    btnQuit = Button(text="[q]uit", handler=partial(quitScanning, None), width=width, left_symbol="", right_symbol="")
 
     dialog = Dialog(
         title=title,
@@ -156,12 +184,11 @@ async def pauseDialog():
         with_background=True
     )
     
-    return await _create_app(dialog, None).run_async()
+    return await _create_app(dialog, None, kb).run_async()
 
 
 async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = datetime.timedelta(0)):
         
-
     bottom_toolbar = HTML('<b>[i/d]</b> Increment / decrement batch size <b>[p]</b> Pause <b>[a]</b> Abort batch')
 
     title = HTML('Slide scanning...')
@@ -174,7 +201,6 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
     @kb.add('i')
     def increment(event):
         batches[0] += 1
-
     
     @kb.add('d')
     def decrement(event):
@@ -189,10 +215,9 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
         " Send Abort (control-c) signal. "
         cancel[0] = True
         #os.kill(os.getpid(), signal.SIGINT)
-
-    # Use `patch_stdout`, to make sure that prints go above the
-    # application.
     
+    # Use `patch_stdout`, to make sure that prints go above the
+    # application. Doesn't seem to work on Windows
     with patch_stdout():
         with ProgressBar(title=title, key_bindings=kb, bottom_toolbar=bottom_toolbar,) as pb:
             previousBatch = 0
@@ -208,23 +233,14 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
                     pbc.progress_bar.invalidate()
                     previousBatch = batches[0]
                 # Do picture taking and transfer here
-                loop = asyncio.get_running_loop()
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    filepath = await loop.run_in_executor(pool, partial(dl.takePicture, camera))
-## should not moveForward if pause button pressed
-                    gPFuture = loop.run_in_executor(pool, partial(dl.getPictures, camera, filepath))
-                    #mfTask = asyncio.create_task(moveForward)
-                    if pause[0]:
-                        await gPFuture
-                    else:
-                        await asyncio.gather(gPFuture, dl.moveForward())
-                    logging.debug("File transfered, moving on!")
-                # Stop when the cancel flag has been set.
+                await dl.takeOneAndMove(camera, pause)
+                
+                scanProgress += 1
+                pbc.item_completed()
+                # Pause when the pause flag has been set.
                 if pause[0]:
                     return batches[0], scanProgress, pbc.time_elapsed
-                else:
-                    scanProgress += 1
-                    pbc.item_completed()
+                # Stop when the cancel flag has been set.
                 if cancel[0]:
                     return batches[0], -1, None
             pbc.done = True
@@ -249,3 +265,4 @@ async def main():
                 break
         if batchSize == 1:
             batchSize = origBatchSize
+    dl.teardown()

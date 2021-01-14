@@ -10,11 +10,11 @@ gp = Mock()
 
 def file_get(self, *args):
     logging.debug("Sleeping in mocked file_get")
-    time.sleep(5)
+    time.sleep(1.5)
     return Mock()
 
 def capture(self, *args):
-    time.sleep(3)
+    time.sleep(5)
     m = Mock()
     m.name = "abcd.dmg"
     m.folder = "img"
@@ -22,7 +22,7 @@ def capture(self, *args):
 
 def output(self, *args):
     logging.debug("Setting GPIO output to: %s" %repr(args))
-    time.sleep(3)
+    time.sleep(0.05)
 
 GPIO.output = output
 

@@ -32,17 +32,21 @@ async def setup():
             camera.init()
         except gp.GPhoto2Error as ex:
             if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                # no camera, try again in 5 seconds
+                # no camera, try again in 3 seconds
                 logging.warning("Please connect the camera")
-                asyncio.sleep(5)
+                await asyncio.sleep(3)
                 continue
             raise
         break
+    GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(RELAIS_1_GPIO, GPIO.OUT)
 
     return camera
 
+def teardown():
+    logging.debug("Teardown.")
+    GPIO.cleanup()
 
 async def moveForward():
     logging.info("Moving forward")
@@ -52,6 +56,12 @@ async def moveForward():
     await asyncio.sleep(1.8)
     logging.info("Forward move complete")
 
+async def forwardAfterWait(shouldPause):
+    logging.debug("Sleeping before moving forward.")
+    await asyncio.sleep(1.5)
+    ## should not moveForward if pause button pressed
+    if not shouldPause[0]:
+        await moveForward()
 
 async def moveBackward():
     logging.info("Moving backward")
@@ -75,19 +85,26 @@ def getPictures(camera, file_path):
     camera_file.save(target)
     logging.debug('Copying done')
 
+def takeAndDownload(camera):
+    fp = takePicture(camera)
+    getPictures(camera, fp)
+
+async def takeOneAndMove(camera, shouldPause):
+    #logging.info("TakeOne started")
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        tpFuture = loop.run_in_executor(pool, partial(takeAndDownload, camera))
+        await asyncio.gather(tpFuture, forwardAfterWait(shouldPause))
+
 async def takeOne():
+    logsetup.consoleHandler.setLevel(logging.DEBUG)
     logging.info("TakeOne started")
     loop = asyncio.get_running_loop()
     camera = await setup()
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        filepath = await loop.run_in_executor(pool, partial(takePicture, camera))
-        gPFuture = loop.run_in_executor(pool, partial(getPictures, camera, filepath))
-        #mfTask = asyncio.create_task(moveForward)
-        await asyncio.gather(gPFuture, moveForward())
-        logging.debug("Done in pool")
-
-    #await asyncio.gather(getPictures(camera, filepath), moveForward())
-
+        await loop.run_in_executor(pool, partial(takeAndDownload, camera))
+    teardown()
+    logging.info("TakeOne finished")
 
 if __name__ == '__main__':
     asyncio.run(takeOne())
