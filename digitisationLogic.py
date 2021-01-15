@@ -104,7 +104,8 @@ def takePicture(camera, willMoveForwardAutomatically=False):
             break
         except gp.GPhoto2Error:
             logger.warning("Error in camera.capture, retrying %d" %retry)
-            asyncio.run(moveBackward())
+            if retry == 0:
+                asyncio.run(moveBackward())
             retry += 1
     if retry > 0:
         asyncio.run(moveForward())
