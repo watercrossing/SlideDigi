@@ -27,10 +27,27 @@ def output(self, *args):
 
 GPIO.output = output
 
+
 mockCam = Mock()
 mockCam.file_get = file_get
 mockCam.capture = capture
 gp.Camera = lambda : mockCam
+
+configMock = Mock()
+
+class ShutterSpeedMock:
+    def __init__(self):
+        self.ss = '1/50'
+    def get_value(self):
+        return self.ss
+    def set_value(self, val):
+        self.ss = val
+
+shutterSpeedMockins = ShutterSpeedMock()
+
+configMock.get_child_by_name = lambda x: shutterSpeedMockins if x == 'shutterspeed' else Mock()
+mockCam.get_config = lambda : configMock
+
 #gp.Camera.file_get = file_get
 
 #cam = gp.Camera()

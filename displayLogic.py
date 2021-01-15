@@ -53,15 +53,16 @@ def _create_app(dialog: AnyContainer, style: Optional[BaseStyle], customBindings
     )
 
 
-async def mainDialog(camera, batchSize):
+async def mainDialog(camera, batchSize, shutterSpeed):
 
     batchSize = [batchSize]
+    shutterSpeed = [shutterSpeed]
 
     kb = KeyBindings()
 
     @kb.add('q')
     def quithdl(event)-> None:
-        get_app().exit(-1)
+        get_app().exit((-1, shutterSpeed[0]))
 
     @kb.add('o')
     def scanOne(event) -> None:
@@ -82,7 +83,15 @@ async def mainDialog(camera, batchSize):
     @kb.add('s')
     def scanBatch(event):
         get_app().layout.focus(btnBatch)
-        get_app().exit(batchSize[0])
+        get_app().exit((batchSize[0], shutterSpeed[0]))
+
+    @kb.add('h')
+    def focusShutterspeed(event):
+        get_app().layout.focus(shutterTextField)
+
+    @kb.add('a')
+    def focusBatchSize(event):
+        get_app().layout.focus(batchSizeTextArea)
 
     title = "Slide Digitalisation"
 
@@ -94,7 +103,7 @@ async def mainDialog(camera, batchSize):
     btnBackward = Button(text="[b]ackward", handler=partial(moveBackward, None), width=width, left_symbol="", right_symbol="")
     btnQuit = Button(text="[q]uit", handler=partial(quithdl, None), width=width, left_symbol="", right_symbol="")
 
-    def accept(buf: Buffer) -> bool:
+    def batchSizeAcceptor(buf: Buffer) -> bool:
         get_app().layout.focus(btnBatch)
         batchSize[0] = int(buf.text)
         return True  # Keep text.
@@ -106,21 +115,51 @@ async def mainDialog(camera, batchSize):
         except ValueError:
             return False
 
-    def hdlTextFieldChange(buf: Buffer):
+    def batchSizeTextChangeHandler(buf: Buffer):
         try:
             batchSize[0] = int(buf.text)
         except ValueError:
             pass
 
-    validator = Validator.from_callable(is_valid, error_message='Numbers only')
-    textfield = TextArea(
+    batchSizeValidator = Validator.from_callable(is_valid, error_message='Numbers only')
+    batchSizeTextArea = TextArea(
         text=str(batchSize[0]),
         multiline=False,
         password=False,
-        validator=validator,
-        accept_handler=accept
+        validator=batchSizeValidator,
+        accept_handler=batchSizeAcceptor
     )
-    textfield.buffer.on_text_changed.add_handler(hdlTextFieldChange)
+    batchSizeTextArea.buffer.on_text_changed.add_handler(batchSizeTextChangeHandler)
+
+    def shutterSpeedValid(text):
+        try:
+            if text.startswith('1/'):
+                return int(text[2:]) > 1
+            else:
+                return int(text) > 0
+        except:
+            return False
+
+    def shutterSpeedAcceptor(buf: Buffer) -> bool:
+        if shutterSpeedValid(buf.text):
+            dl.setShutterspeed(camera, buf.text)
+            shutterSpeed[0] = dl.getShutterspeed(camera)
+            shutterTextField.text = shutterSpeed[0]
+            get_app().layout.focus(btnOne)
+            return True
+        return False
+
+    shutterSpeedValidator = Validator.from_callable(shutterSpeedValid, error_message='Not a valid shutter speed')
+    shutterTextField = TextArea(
+        text=shutterSpeed[0],
+        multiline=False,
+        password=False,
+        width=8,
+        validator=shutterSpeedValidator,
+        accept_handler=shutterSpeedAcceptor        
+    )
+    ## TODO: When in text fields, keyBindings still respond (and move the cursor out of the text field). 
+    ## Not a real problem here though.
 
     dialog = Dialog(
         title=title,
@@ -129,8 +168,11 @@ async def mainDialog(camera, batchSize):
             btnOne,
             btnForward,
             btnBackward,
-            VSplit([Label(text="Batch size:"), textfield,]),
+            VSplit([Label(text="B[a]tch size:"), batchSizeTextArea]),
             ValidationToolbar(), 
+            VSplit([Label(text="S[h]utter speed:"), shutterTextField]),
+            ValidationToolbar(), ## TODO: both validation toolbars respond to the same events.
+            Label(text='Press enter above to accept'),
             btnQuit          
         ],
         padding=0),
@@ -250,8 +292,9 @@ async def batchScanDialogue(camera, batchSize, scanProgress = 0, time_elapsed = 
 async def main():
     batchSize = origBatchSize = 36
     camera = await dl.setup()
+    shutterSpeed = dl.getShutterspeed(camera)
     while True:
-        batchSize = await mainDialog(camera, batchSize)
+        batchSize, shutterSpeed = await mainDialog(camera, batchSize, shutterSpeed)
         logger.debug("Main Dialog returned %d" %batchSize)
         if batchSize == -1:
             break

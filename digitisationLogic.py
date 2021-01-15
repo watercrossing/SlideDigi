@@ -73,6 +73,27 @@ async def moveBackward():
     await asyncio.sleep(1.8)
     logger.info("Backward move complete")
 
+def getShutterspeed(camera):
+    logger.debug("Retrieving shutter speed")
+    try:
+        conf = camera.get_config()
+        ss = conf.get_child_by_name('shutterspeed')
+        val = ss.get_value()
+    finally:
+        camera.exit()
+    logger.debug("Shutter speed is %s" %val)
+    return val
+
+def setShutterspeed(camera, shutterspeed):
+    logger.debug("Setting shutter speed to %s" %shutterspeed)
+    try:
+        conf = camera.get_config()
+        ss = conf.get_child_by_name('shutterspeed')
+        ss.set_value(shutterspeed)
+        camera.set_conf(conf)
+    finally:
+        camera.exit()
+    logger.debug("Shutter speed set.")
 
 def takePicture(camera):
     logger.debug('Taking picture')
