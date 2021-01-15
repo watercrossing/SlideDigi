@@ -95,7 +95,7 @@ def setShutterspeed(camera, shutterspeed):
         camera.exit()
     logger.debug("Shutter speed set.")
 
-def takePicture(camera):
+def takePicture(camera, willMoveForwardAutomatically=False):
     logger.debug('Taking picture')
     retry = 0
     while retry < 3:
@@ -104,7 +104,12 @@ def takePicture(camera):
             break
         except gp.GPhoto2Error:
             logger.warning("Error in camera.capture, retrying %d" %retry)
+            loop = asyncio.get_running_loop()
+            loop.run_until_complete(moveBackward)
             retry += 1
+    if retry > 0:
+        loop = asyncio.get_running_loop()
+        loop.run_until_complete(moveForward)
     if retry > 2:
         raise gp.GPhoto2Error("Could not capture image")
     return file_path
@@ -123,8 +128,6 @@ def getPictures(camera, file_path):
             retry += 1
     if retry > 2:
         raise gp.GPhoto2Error("Could not save camera file")
-
-    ## Should retry the above loop and catch gphoto2.GPhoto2Error - maybe three times?
     logger.debug('Copying done')
 
 def takeAndDownload(camera):
