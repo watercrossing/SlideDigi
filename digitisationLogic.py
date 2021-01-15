@@ -97,15 +97,34 @@ def setShutterspeed(camera, shutterspeed):
 
 def takePicture(camera):
     logger.debug('Taking picture')
-    file_path = camera.capture(gp.GP_CAPTURE_IMAGE)
+    retry = 0
+    while retry < 3:
+        try:
+            file_path = camera.capture(gp.GP_CAPTURE_IMAGE)
+            break
+        except gp.GPhoto2Error:
+            logger.warning("Error in camera.capture, retrying %d" %retry)
+            retry += 1
+    if retry > 2:
+        raise gp.GPhoto2Error("Could not capture image")
     return file_path
 
 def getPictures(camera, file_path):
-    logger.debug('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join(TARGETDIR, datetime.now().strftime("%Y%m%d-%H%M%S.") + file_path.name.split(".")[-1])
-    logger.debug('Copying image to %s' %target)
-    camera_file = camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-    camera_file.save(target)
+    logger.debug('Copying camera file path: {0}/{1} to {2}'.format(file_path.folder, file_path.name, target))
+    retry = 0
+    while retry < 3:
+        try:
+            camera_file = camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+            camera_file.save(target)
+            break
+        except gp.GPhoto2Error:
+            logger.warning("Error in file_get/save encoutered, retrying %d" %retry)
+            retry += 1
+    if retry > 2:
+        raise gp.GPhoto2Error("Could not save camera file")
+
+    ## Should retry the above loop and catch gphoto2.GPhoto2Error - maybe three times?
     logger.debug('Copying done')
 
 def takeAndDownload(camera):
