@@ -104,10 +104,10 @@ def takePicture(camera, willMoveForwardAutomatically=False):
             break
         except gp.GPhoto2Error:
             logger.warning("Error in camera.capture, retrying %d" %retry)
-            if retry == 0:
+            if retry == 0 and willMoveForwardAutomatically:
                 asyncio.run(moveBackward())
             retry += 1
-    if retry > 0:
+    if retry > 0 and willMoveForwardAutomatically:
         asyncio.run(moveForward())
     if retry > 2:
         raise gp.GPhoto2Error("Could not capture image")
@@ -129,15 +129,15 @@ def getPictures(camera, file_path):
         raise gp.GPhoto2Error("Could not save camera file")
     logger.debug('Copying done')
 
-def takeAndDownload(camera):
-    fp = takePicture(camera)
+def takeAndDownload(camera, willMoveForwardAutomatically=False):
+    fp = takePicture(camera, willMoveForwardAutomatically)
     getPictures(camera, fp)
 
 async def takeOneAndMove(camera, shouldPause):
     #logger.info("TakeOne started")
     loop = asyncio.get_running_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        tpFuture = loop.run_in_executor(pool, partial(takeAndDownload, camera))
+        tpFuture = loop.run_in_executor(pool, partial(takeAndDownload, camera, True))
         await asyncio.gather(tpFuture, forwardAfterWait(shouldPause))
 
 async def takeOne():
