@@ -90,7 +90,7 @@ def setShutterspeed(camera, shutterspeed):
         conf = camera.get_config()
         ss = conf.get_child_by_name('shutterspeed')
         ss.set_value(shutterspeed)
-        camera.set_conf(conf)
+        camera.set_config(conf)
     finally:
         camera.exit()
     logger.debug("Shutter speed set.")
