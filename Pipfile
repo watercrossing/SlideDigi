@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 "RPi.GPIO" = {version = "*", markers="platform_machine == 'armv7l' and sys_platform == 'linux'"}
 gphoto2 = {version = "*", markers="platform_machine == 'armv7l' and sys_platform == 'linux'"}
-prompt-toolkit = "*"
+prompt-toolkit = {git = "https://github.com/watercrossing/python-prompt-toolkit.git", editable = true, ref = "better-progress-bars"}
 
 [dev-packages]
 pylint = "*"
