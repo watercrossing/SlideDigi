@@ -60,7 +60,7 @@ async def moveForward():
 
 async def forwardAfterWait(shouldPause):
     logger.debug("Sleeping before moving forward.")
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(3.8)
     ## should not moveForward if pause button pressed
     if not shouldPause[0]:
         await moveForward()
